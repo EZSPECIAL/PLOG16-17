@@ -70,7 +70,7 @@ combineCells([First|Tail], Counter, CurrLine, Line1, Line2, Line3) :-
 
 %Reaching the end of the list asserts each individual line for printing
 
-combineCells([], Counter, CurrLine, Line1, Line2, Line3) :-
+combineCells([], _, _, Line1, Line2, Line3) :-
         retractall(line1(_)),
         assert(line1(Line1)),
 
@@ -103,6 +103,19 @@ printLine([First|Tail]) :-
         printLine(Tail).
 
 printLine([]).
+
+%Prints list of available blocks to choose from
+
+printAvail([First|Tail], Counter) :-
+        (Counter == 10 -> nl, NewCounter is 1; NewCounter is Counter+1),
+        write('\''),
+        write(First),
+        write('\' '),
+        printAvail(Tail, NewCounter).
+
+printAvail([], _) :-
+        nl.
+
 
 %Builds 3x3 cells linearly, based on the values stored in the board, also adds vertical padding
 %Also receives Player in case there's one to display on that cell
@@ -298,8 +311,8 @@ buildCell('c', Player, [' ', ' ', ' ', '|', ' ', Var, ' ', '|', ' ', ' ', 'c', '
         
 %N is a neutral zone, no player can move to it
 
-buildCell('N', Player, [' ', ' ', ' ', '|', ' ', ' ', ' ', '|', ' ', ' ', ' ', '|']).
+buildCell('N', _, [' ', ' ', ' ', '|', ' ', ' ', ' ', '|', ' ', ' ', ' ', '|']).
 
 %Blank cell for stage 1 of the game, constructing the board
 
-buildCell(' ', Player, [' ', ' ', ' ', '|', ' ', ' ', ' ', '|', ' ', ' ', ' ', '|']).
+buildCell(' ', _, [' ', ' ', ' ', '|', ' ', ' ', ' ', '|', ' ', ' ', ' ', '|']).
