@@ -1,6 +1,12 @@
-:- [display].
-:- [board].
-:- use_module(library(lists)).
+/*
+
+   Main file for the boardgame Trippples, contains game loop and game logic
+
+*/
+
+:- [display].                   %Import board display functions
+:- [board].                     %Import board manipulation functions
+:- use_module(library(lists)).  %Use SICSTUS list operation predicates
 
 :- dynamic position1/2.
 :- dynamic position2/2.
@@ -37,17 +43,21 @@ stage2([['C','156','237','137','346','167','134','S'],
 %             '378', '456', '457', '458', '467', '468', '478', '567', '568',
 %             '578', '678']).
 
-availPieces(['123', '124']).
+availPieces(['123', '124']). %TODO remove temporary
+
+%Player 1 and 2 positions on the board
 
 position1(0, 0).
-position2(0, 7).
+position2(7, 0).
+
+%Game loop
 
 playGame :-
         instructions,
         stage1(Board),
         availPieces(Avail),
         stage1(Board, Avail, FinalBoard),
-        viewBoard(FinalBoard).
+        displayBoard(FinalBoard).
 
 %Prints program usage instructions, no game rules
 
@@ -64,19 +74,22 @@ instructions :-
 
 stage1(Board, Avail, FinalBoard) :-
         length(Avail, N),             %Check if no more blocks available
-        (N \= 0 -> viewBoard(Board),
+        (N \= 0 -> displayBoard(Board),
+                   
+        %Player 1 turn
         stage1ChoiceValidation(Avail, Move1, 1),
         delete(Avail, Move1, NewAvail),
         stage1PlaceValidation(Board, X1, Y1),
         boardSetElement(Board, 0, X1, Y1, [Move1], [], NewBoard),
         
-        viewBoard(NewBoard),
+        displayBoard(NewBoard),
         
+        %Player 2 turn
         stage1ChoiceValidation(NewAvail, Move2, 2),
         delete(NewAvail, Move2, NewerAvail),
         stage1PlaceValidation(NewBoard, X2, Y2),
         boardSetElement(NewBoard, 0, X2, Y2, [Move2], [], NewerBoard),
-        stage1(NewerBoard, NewerAvail, FinalBoard); append([], Board, FinalBoard), !).
+        stage1(NewerBoard, NewerAvail, FinalBoard); append([], Board, FinalBoard)). %Else reached end of Avail, output FinalBoard
 
 %Repeats until user inputs a valid block
 

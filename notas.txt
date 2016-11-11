@@ -1,26 +1,7 @@
 TODO:
-	- board manipulation for stage 1
-	- display player
-	- play 1st stage CPU
 	- play 2nd stage
+	- relatorio?
+	- play 1st stage CPU
 	- play 2nd stage CPU
-	- refactor checkEmpty (remove conditions? remove assert?)
-
-joga(jogadorID, TabuleiroInicial, TabuleiroFinal)
-
-joga ((L1, C1), (L2, C2)) :-
-	tab(Tab),
-	mostra(1, (L1, C1), (L2, C2), Tab),
-	pedejogada(X...),
-	atualizaTab(...).
-	
-mostralinha(linha..., []) :- linha > 8
-
-mostra(linha, (L1, C1), (L2, C2), [Head | Tail]) :-
-	mostralinhacomjogadores(1, Coluna, Head...),
-	NovaLinha is Linha+1,
-	mostra(NovaLinha, (L1,C1), (L2,C2), Tail).
-	
-mostraLinhacomjogadores()
-	mostra(Linha, X, [Head | Tail]...)
-	mostra(Linha, Y, [Head | Tail]...)
+	- relatorio?
+	- learn !
