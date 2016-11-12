@@ -64,10 +64,11 @@ playGame :-
 playGameS2 :-
         retractall(position1(_, _)),
         retractall(position2(_, _)),
-        assert(position1(7, 0)),
-        assert(position2(0, 0)),
+        assert(position1(0, 6)),
+        assert(position2(7, 6)),
         stage2b(S1Board),
-        stage2Loop(S1Board, 0).
+        stage2Loop(S1Board, 0),
+        displayBoard(S1Board).
 
 %Prints program usage instructions, no game rules
 
@@ -171,7 +172,7 @@ stage2(Board, Win) :-
         (N1 > 0 -> displayBoard(Board),
         stage2MoveValidation(Movelist1, 1, X1, Y1),
         retractall(position1(_, _)),
-        assert(position1(X1, Y1)), displayBoard(Board); write('No valid moves for Player 1, skipping turn\n')),
+        assert(position1(X1, Y1)); write('No valid moves for Player 1, skipping turn\n')),
 
         %Check if Player 1 won
         
@@ -186,8 +187,7 @@ stage2(Board, Win) :-
         (N2 > 0 -> displayBoard(Board),
         stage2MoveValidation(Movelist2, 2, X2, Y2),
         retractall(position2(_, _)),
-        assert(position2(X2, Y2)),
-        displayBoard(Board); write('No valid moves for Player 2, skipping turn\n')); true),
+        assert(position2(X2, Y2)); write('No valid moves for Player 2, skipping turn\n')); true),
         
         %Check if Player 2 won only if Player 1 hasn't
         
@@ -217,7 +217,7 @@ stage2ComputeMoves(Board, Player, Movelist) :-
         
         %Check if movement coords are not outside the board, to a starting cell or to a neutral cell
         
-        checkBounds(Board, MovelistT, [], NewMovelistT),
+        checkBounds(Board, MovelistT, Player, [], NewMovelistT),
         
         %Check if remaining movement coords are to another player's position
         
@@ -257,12 +257,15 @@ fetchBlock([], _, _, _).
 
 %Verifies if computed moves are inbounds, checks for out of board, neutral cells and starting cells
 
-checkBounds(Board, [First|Tail], Movelist, OutMove) :-
+checkBounds(Board, [First|Tail], Player, Movelist, OutMove) :-
         [X|TempY] = First,
         [Y|_] = TempY,
         checkElement(Board, 0, X, Y, 'N', FoundN), %Check if neutral block
         checkElement(Board, 0, X, Y, 'C', FoundC), %Check if Player 2's starting cell
         checkElement(Board, 0, X, Y, 'S', FoundS), %Check if Player 1's starting cell
+        
+        (Player == 1 -> checkElement(Board, 0, X, Y, 'c', Foundc);
+         checkElement(Board, 0, X, Y, 's', Founds)),
         
         %Check if -1 or 8 is a part of the movement coords
         
@@ -272,13 +275,15 @@ checkBounds(Board, [First|Tail], Movelist, OutMove) :-
          FoundN == 1 -> append([], Movelist, NewMovelist);
          FoundS == 1 -> append([], Movelist, NewMovelist);
          FoundC == 1 -> append([], Movelist, NewMovelist);
+         Foundc == 1 -> append([], Movelist, NewMovelist);
+         Founds == 1 -> append([], Movelist, NewMovelist);
          
          %Only append the movement coords if they were inbounds
          
          append(Movelist, [First], NewMovelist)),
-        checkBounds(Board, Tail, NewMovelist, OutMove).
+        checkBounds(Board, Tail, Player, NewMovelist, OutMove).
 
-checkBounds(_, [], Movelist, OutMove) :-
+checkBounds(_, [], _, Movelist, OutMove) :-
         append([], Movelist, OutMove).
 
 %Checks if Element is at X, Y position on the board
