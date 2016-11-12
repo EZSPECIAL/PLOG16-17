@@ -1,0 +1,10 @@
+- Write report 					(easy)
+- Verify if board is winnable 	(hard)
+- 1st Stage played by CPU		(hard)
+- 1st Stage played by CPU L2	(very hard)
+- 2nd Stage played by CPU		(medium)
+- 2nd Stage played by CPU L2	(hard)
+- Indirect win					(very hard)
+- Freeze win
+	- PvP						(medium)
+	- PvCPU or CPUvCPU			(very hard)

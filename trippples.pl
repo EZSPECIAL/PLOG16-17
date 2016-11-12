@@ -9,9 +9,10 @@
 :- [board].                     %Import board manipulation functions
 :- use_module(library(lists)).  %Use SICSTUS list operation predicates
 
+%Player positions
+
 :- dynamic position1/2.
 :- dynamic position2/2.
-:- dynamic test/1.
 
 %Stage 1 of the game, always starts like this
 
@@ -24,51 +25,49 @@ stage1([['C',' ',' ',' ',' ',' ',' ','S'],
      [' ',' ',' ',' ',' ',' ',' ',' '],
      ['s',' ',' ',' ',' ',' ',' ','c']]).
 
-%Stage 2 example, useful for testing
+%Stage 2 board used for playGameS2, is winnable
 
 stage2b([['C','156','237','137','346','167','134','S'],
-     ['457','246','128','245','456','178','458','258'],
+     ['457','246','128','245','456','146','458','258'],
      ['135','138','278','678','168','136','347','267'],
-     ['468','234','345','N','N','146','157','236'],
-     ['467','124','578','N','N','368','247','367'],
+     ['468','234','345','N','N','178','157','236'],
+     ['467','124','578','N','N','567','247','367'],
      ['158','357','147','568','148','125','358','178'],
-     ['478','145','256','235','348','127','123','356'],
-     ['s','248','268','126','567','257','238','c']]).
+     ['123','145','256','235','348','127','356','478'],
+     ['s','248','268','126','368','257','238','c']]).
 
 %Available pieces to use during Stage 1 of the game
 
-%availPieces(['123', '124', '125', '126', '127', '128', '134', '135', '136',
-%             '137', '138', '145', '146', '147', '148', '156', '157', '158',
-%             '167', '168', '178', '234', '235', '236', '237', '238', '245',
-%             '246', '247', '248', '256', '257', '258', '267', '268', '278',
-%             '345', '346', '347', '348', '356', '357', '358', '367', '368',
-%             '378', '456', '457', '458', '467', '468', '478', '567', '568',
-%             '578', '678']).
+availPieces(['123', '124', '125', '126', '127', '128', '134', '135', '136',
+             '137', '138', '145', '146', '147', '148', '156', '157', '158',
+             '167', '168', '178', '234', '235', '236', '237', '238', '245',
+             '246', '247', '248', '256', '257', '258', '267', '268', '278',
+             '345', '346', '347', '348', '356', '357', '358', '367', '368',
+             '378', '456', '457', '458', '467', '468', '478', '567', '568',
+             '578', '678']).
 
-availPieces(['123', '124']). %TODO remove temporary
-
-%Player 1 and 2 positions on the board
-
-position1(5, 4).
-position2(2, 2).
-
-%Game loop
-
-testout :-
-        stage2b(Board),
-        stage2(Board).
-
-testout2 :-
-        position1(X, Y),
-        moveAvail('128', X, Y, Movelist),
-        assert(test(Movelist)).
+%Play full game
 
 playGame :-
+        retractall(position1(_, _)),
+        retractall(position2(_, _)),
+        assert(position1(7, 0)),
+        assert(position2(0, 0)),
         instructions,
         stage1(Board),
         availPieces(Avail),
-        stage1(Board, Avail, FinalBoard),
-        displayBoard(FinalBoard).
+        stage1(Board, Avail, S1Board),
+        stage2Loop(S1Board, 0).
+
+%Play only the 2nd stage of the game
+
+playGameS2 :-
+        retractall(position1(_, _)),
+        retractall(position2(_, _)),
+        assert(position1(7, 0)),
+        assert(position2(0, 0)),
+        stage2b(S1Board),
+        stage2Loop(S1Board, 0).
 
 %Prints program usage instructions, no game rules
 
@@ -145,17 +144,102 @@ checkEmpty([First|Tail], YCount, X, Y, Found) :-
 checkEmpty([], _, _, _, Found) :-
         (Found == 1 -> true; Found is 0).
 
-stage2(Board) :-
-        stage2ComputeMoves(Board, 1, Movelist1).
-        %stage2ComputeMoves(Board, 2, Movelist2).
+%Game loop for the 2nd Stage of the game
+
+stage2Loop(Board, State) :-
+        (State == 0 -> stage2(Board, Win),
+        (Win == 1 -> NewState is 1;
+         Win == 2 -> NewState is 2;
+         Win == 3 -> NewState is 3;
+         NewState is 0),
+        stage2Loop(Board, NewState);
+         State == 1 -> write('Player 1 has reached the goal\n');
+         State == 2 -> write('Player 2 has reached the goal\n');
+         State == 3 -> write('No moves available for both players, game is a draw\n')).
+
+%Game logic for the 2nd Stage of the game
+
+stage2(Board, Win) :-
+        
+        %Available moves for Player 1
+        
+        stage2ComputeMoves(Board, 1, Movelist1),
+        length(Movelist1, N1), %0 = no moves available
+        
+        %Player 1's move
+        
+        (N1 > 0 -> displayBoard(Board),
+        stage2MoveValidation(Movelist1, 1, X1, Y1),
+        retractall(position1(_, _)),
+        assert(position1(X1, Y1)), displayBoard(Board); write('No valid moves for Player 1, skipping turn\n')),
+
+        %Check if Player 1 won
+        
+        checkWin(Board, 1, Win1),
+
+        %Available moves for Player 2
+        
+        (Win1 \= 1 -> stage2ComputeMoves(Board, 2, Movelist2), length(Movelist2, N2),
+                      
+        %Player 2's move
+                      
+        (N2 > 0 -> displayBoard(Board),
+        stage2MoveValidation(Movelist2, 2, X2, Y2),
+        retractall(position2(_, _)),
+        assert(position2(X2, Y2)),
+        displayBoard(Board); write('No valid moves for Player 2, skipping turn\n')); true),
+        
+        %Check if Player 2 won only if Player 1 hasn't
+        
+        (Win1 \= 1 -> checkWin(Board, 2, Win2); true),
+        
+        %Check if game's a draw
+        
+        checkDraw(N1, N2, Draw),
+        
+        %Win is used in stage2Loop to decide if the game has ended
+        
+        (Draw == 1 -> Win is 3;
+         Win1 == 1 -> Win is 1;
+         Win2 == 1 -> Win is 2;
+         Win is 0).
+
+%Computes moves available for Player
 
 stage2ComputeMoves(Board, Player, Movelist) :-
         position1(X1, Y1),
         position2(X2, Y2),
         (Player == 1 -> fetchBlockLine(Board, 0, X2, Y2, Block); fetchBlockLine(Board, 0, X1, Y1, Block)),
+        
+        %moveAvail converts list values (e.g. '123') to a list of movement coords
+        
         (Player == 1 -> moveAvail(Block, X1, Y1, MovelistT); moveAvail(Block, X2, Y2, MovelistT)),
+        
+        %Check if movement coords are not outside the board, to a starting cell or to a neutral cell
+        
         checkBounds(Board, MovelistT, [], NewMovelistT),
-        assert(test(NewMovelistT)).
+        
+        %Check if remaining movement coords are to another player's position
+        
+        (Player == 1 -> checkPlayer(NewMovelistT, X2, Y2, [], Movelist); checkPlayer(NewMovelistT, X1, Y1, [], Movelist)).
+
+%Game's a draw when both players have 0 moves available
+
+checkDraw(N1, N2, Result) :-
+        (N1 > 0 -> Result is 0;
+         N2 > 0 -> Result is 0;
+         Result is 1).
+        
+%Game is won when Player 1 reaches the 's' cell or Player 2 reaches the 'c' cell
+
+checkWin(Board, Player, WinT) :-
+        (Player == 1 -> position1(X, Y);
+         position2(X, Y)),
+        (Player == 1 -> checkElement(Board, 0, X, Y, 's', Found);
+         Player == 2 -> checkElement(Board, 0, X, Y, 'c', Found)),
+        (Found == 1 -> WinT is 1; WinT is 0).
+
+%Creates a list with available values of movement ('123', '234', etc)
 
 fetchBlockLine([First|Tail], YCount, X, Y, OutBlock) :-
         (YCount == Y -> fetchBlock(First, 0, X, OutBlock); true),
@@ -171,29 +255,88 @@ fetchBlock([First|Tail], XCount, X, OutBlock) :-
 
 fetchBlock([], _, _, _).
 
-%Verifies if computed moves are inbounds, checks for out of board and neutral blocks
-%Assumes neutral blocks are always at [[3,3], [3,4], [4,3], [4,4]], not generic
+%Verifies if computed moves are inbounds, checks for out of board, neutral cells and starting cells
 
 checkBounds(Board, [First|Tail], Movelist, OutMove) :-
         [X|TempY] = First,
         [Y|_] = TempY,
-        checkNeutral(Board, 0, X, Y, Found),
-        write(Found),
+        checkElement(Board, 0, X, Y, 'N', FoundN), %Check if neutral block
+        checkElement(Board, 0, X, Y, 'C', FoundC), %Check if Player 2's starting cell
+        checkElement(Board, 0, X, Y, 'S', FoundS), %Check if Player 1's starting cell
+        
+        %Check if -1 or 8 is a part of the movement coords
+        
         (memberchk(8, First) -> append([], Movelist, NewMovelist);
          memberchk(-1, First) -> append([], Movelist, NewMovelist);
-         Found == 1 -> append([], Movelist, NewMovelist);
+         
+         FoundN == 1 -> append([], Movelist, NewMovelist);
+         FoundS == 1 -> append([], Movelist, NewMovelist);
+         FoundC == 1 -> append([], Movelist, NewMovelist);
+         
+         %Only append the movement coords if they were inbounds
+         
          append(Movelist, [First], NewMovelist)),
         checkBounds(Board, Tail, NewMovelist, OutMove).
 
 checkBounds(_, [], Movelist, OutMove) :-
         append([], Movelist, OutMove).
 
-checkNeutral([First|Tail], YCount, X, Y, Found) :-
-        write(X),
-        write(Y),
-        (YCount \= Y -> true; nth0(X, First, 'N') -> Found is 1; true),
-        NewYCount is YCount + 1,
-        checkNeutral(Tail, NewYCount, X, Y, Found).
+%Checks if Element is at X, Y position on the board
 
-checkNeutral([], _, _, _, Found) :-
+checkElement([First|Tail], YCount, X, Y, Element, Found) :-
+        (YCount \= Y -> true; nth0(X, First, Element) -> Found is 1; true),
+        NewYCount is YCount + 1,
+        checkElement(Tail, NewYCount, X, Y, Element, Found).
+
+checkElement([], _, _, _, _, Found) :-
+        (Found == 1 -> true; Found is 0).
+
+%Check if other player is at MX, MY
+%PX, PY is the position of the opponent
+
+checkPlayer([First|Tail], PX, PY, Movelist, OutMove) :-
+        [MX|TempY] = First,
+        [MY|_] = TempY,
+        (MX == PX -> (MY == PY -> append([], Movelist, NewMovelist);
+                      append(Movelist, [First], NewMovelist));
+         append(Movelist, [First], NewMovelist)),
+        checkPlayer(Tail, PX, PY, NewMovelist, OutMove).
+
+checkPlayer([], _, _, Movelist, OutMove) :-
+        append([], Movelist, OutMove).
+
+%Repeats until user inputs a valid movement
+
+stage2MoveValidation(Movelist, Player, X, Y) :-
+        (stage2Move(Movelist, Player, X, Y) -> true; stage2MoveValidation(Movelist, Player, X, Y)).
+
+%Requests user to input movement coords from the available movements, computed earlier
+
+stage2Move(Movelist, Player, X, Y) :-
+        (Player == 1 -> write('Player 1\'s move (x). Where to? (0,0) is on the upper left corner\n');
+         write('Player 2\'s move (y). Where to? (0,0) is on the upper left corner\n')),
+        write('Possible moves: '),
+        printLine(Movelist), nl,
+        write('Column:\n'),
+        read(X),
+        write('Row:\n'),
+        read(Y),
+        stage2CheckMove(Movelist, X, Y, Found),
+        
+        %If movement provided by user isn't on the movement list backtrack to stage2MoveValidation
+        %which calls stage2Move again
+        
+        (Found == 1 -> true; write('Not a valid move\n'), fail).
+
+%Checks if user input movement is actually on the movement list        
+
+stage2CheckMove([First|Tail], X, Y, Found) :-
+        [MX|TempY] = First,
+        [MY|_] = TempY,
+        (MX == X -> (MY == Y -> Found is 1;
+                     true);
+         true),
+        stage2CheckMove(Tail, X, Y, Found).
+
+stage2CheckMove([], _, _, Found) :-
         (Found == 1 -> true; Found is 0).
