@@ -4,12 +4,14 @@
 
 */
 
+:- [decision].                  %Import long decision predicates
 :- [display].                   %Import board display functions
 :- [board].                     %Import board manipulation functions
 :- use_module(library(lists)).  %Use SICSTUS list operation predicates
 
 :- dynamic position1/2.
 :- dynamic position2/2.
+:- dynamic test/1.
 
 %Stage 1 of the game, always starts like this
 
@@ -24,7 +26,7 @@ stage1([['C',' ',' ',' ',' ',' ',' ','S'],
 
 %Stage 2 example, useful for testing
 
-stage2([['C','156','237','137','346','167','134','S'],
+stage2b([['C','156','237','137','346','167','134','S'],
      ['457','246','128','245','456','178','458','258'],
      ['135','138','278','678','168','136','347','267'],
      ['468','234','345','N','N','146','157','236'],
@@ -47,10 +49,19 @@ availPieces(['123', '124']). %TODO remove temporary
 
 %Player 1 and 2 positions on the board
 
-position1(0, 0).
-position2(7, 0).
+position1(5, 4).
+position2(2, 2).
 
 %Game loop
+
+testout :-
+        stage2b(Board),
+        stage2(Board).
+
+testout2 :-
+        position1(X, Y),
+        moveAvail('128', X, Y, Movelist),
+        assert(test(Movelist)).
 
 playGame :-
         instructions,
@@ -132,4 +143,57 @@ checkEmpty([First|Tail], YCount, X, Y, Found) :-
         checkEmpty(Tail, NewYCount, X, Y, Found).
 
 checkEmpty([], _, _, _, Found) :-
+        (Found == 1 -> true; Found is 0).
+
+stage2(Board) :-
+        stage2ComputeMoves(Board, 1, Movelist1).
+        %stage2ComputeMoves(Board, 2, Movelist2).
+
+stage2ComputeMoves(Board, Player, Movelist) :-
+        position1(X1, Y1),
+        position2(X2, Y2),
+        (Player == 1 -> fetchBlockLine(Board, 0, X2, Y2, Block); fetchBlockLine(Board, 0, X1, Y1, Block)),
+        (Player == 1 -> moveAvail(Block, X1, Y1, MovelistT); moveAvail(Block, X2, Y2, MovelistT)),
+        checkBounds(Board, MovelistT, [], NewMovelistT),
+        assert(test(NewMovelistT)).
+
+fetchBlockLine([First|Tail], YCount, X, Y, OutBlock) :-
+        (YCount == Y -> fetchBlock(First, 0, X, OutBlock); true),
+        NewYCount is YCount + 1,
+        fetchBlockLine(Tail, NewYCount, X, Y, OutBlock).
+
+fetchBlockLine([], _, _, _, _).
+
+fetchBlock([First|Tail], XCount, X, OutBlock) :-
+        (XCount == X -> append([], First, OutBlock); true),
+        NewXCount is XCount + 1,
+        fetchBlock(Tail, NewXCount, X, OutBlock).
+
+fetchBlock([], _, _, _).
+
+%Verifies if computed moves are inbounds, checks for out of board and neutral blocks
+%Assumes neutral blocks are always at [[3,3], [3,4], [4,3], [4,4]], not generic
+
+checkBounds(Board, [First|Tail], Movelist, OutMove) :-
+        [X|TempY] = First,
+        [Y|_] = TempY,
+        checkNeutral(Board, 0, X, Y, Found),
+        write(Found),
+        (memberchk(8, First) -> append([], Movelist, NewMovelist);
+         memberchk(-1, First) -> append([], Movelist, NewMovelist);
+         Found == 1 -> append([], Movelist, NewMovelist);
+         append(Movelist, [First], NewMovelist)),
+        checkBounds(Board, Tail, NewMovelist, OutMove).
+
+checkBounds(_, [], Movelist, OutMove) :-
+        append([], Movelist, OutMove).
+
+checkNeutral([First|Tail], YCount, X, Y, Found) :-
+        write(X),
+        write(Y),
+        (YCount \= Y -> true; nth0(X, First, 'N') -> Found is 1; true),
+        NewYCount is YCount + 1,
+        checkNeutral(Tail, NewYCount, X, Y, Found).
+
+checkNeutral([], _, _, _, Found) :-
         (Found == 1 -> true; Found is 0).

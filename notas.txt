@@ -1,7 +1,16 @@
 TODO:
 	- play 2nd stage
+		- verify if board is winnable
+		- 1st move is different
+		- compute possible moves
+			- verify player collision
+		- if no moves skip
+		- if no moves for both players -> draw
+		- check win
 	- relatorio?
 	- play 1st stage CPU
 	- play 2nd stage CPU
+	- indirect win
+	- freeze win
 	- relatorio?
 	- learn !
