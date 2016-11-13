@@ -1,9 +1,8 @@
-- Write report 					(easy)
-- Verify if board is winnable 	(hard)
-- 1st Stage played by CPU		(hard)
-- 1st Stage played by CPU L2	(very hard)
-- 2nd Stage CPU improve			(hard)
-- Indirect win					(very hard)
-- Freeze win
-	- PvP						(hard)
-	- PvCPU or CPUvCPU			(very hard)
+- 2nd Stage 1st move can exploit the game, fix	(easy)
+- 1st Stage played by CPU						(hard)
+- 1st Stage played by CPU L2					(very hard)
+- 2nd Stage CPU improve							(hard)
+- Indirect win									(very hard)
+- Freeze win				
+	- PvP										(hard)
+	- PvCPU or CPUvCPU							(very hard)
