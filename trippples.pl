@@ -5,8 +5,9 @@
 */
 
 :- [decision].                  %Import long decision predicates
-:- [display].                   %Import board display functions
-:- [board].                     %Import board manipulation functions
+:- [display].                   %Import board display predicates
+:- [board].                     %Import board manipulation predicates
+:- [cpu].                       %CPU player predicates
 :- use_module(library(lists)).  %Use SICSTUS list operation predicates
 
 %Player positions
@@ -46,9 +47,9 @@ availPieces(['123', '124', '125', '126', '127', '128', '134', '135', '136',
              '378', '456', '457', '458', '467', '468', '478', '567', '568',
              '578', '678']).
 
-%Play full game
+%Play full game, Stage 1 has no CPU
 
-playGame :-
+playGame(Player1, Player2, Difficulty1, Difficulty2) :-
         retractall(position1(_, _)),
         retractall(position2(_, _)),
         assert(position1(7, 0)),
@@ -57,17 +58,44 @@ playGame :-
         stage1(Board),
         availPieces(Avail),
         stage1(Board, Avail, S1Board),
-        stage2Loop(S1Board, 0).
+        
+        (Player1 == 1 ->
+         (Player2 == 1 -> stage2Loop(S1Board, 0); stage2LoopPvCPU(S1Board, Difficulty2, 0));
+         stage2LoopCPUvCPU(S1Board, Difficulty1, Difficulty2, 0)),
+        
+        displayBoard(S1Board).
 
-%Play only the 2nd stage of the game
+%Play only the 2nd stage of the game Player against Player
 
 playGameS2 :-
         retractall(position1(_, _)),
         retractall(position2(_, _)),
-        assert(position1(0, 6)),
-        assert(position2(7, 6)),
+        assert(position1(7, 0)),
+        assert(position2(0, 0)),
         stage2b(S1Board),
         stage2Loop(S1Board, 0),
+        displayBoard(S1Board).
+
+%Play only the 2nd stage of the game against the CPU
+
+playGameS2PvCPU(Difficulty) :-
+        retractall(position1(_, _)),
+        retractall(position2(_, _)),
+        assert(position1(7, 0)),
+        assert(position2(0, 0)),
+        stage2b(S1Board),
+        stage2LoopPvCPU(S1Board, Difficulty, 0),
+        displayBoard(S1Board).
+
+%Watch the CPU play the 2nd stage against each other
+
+playGameS2CPUvCPU(Difficulty1, Difficulty2) :-
+        retractall(position1(_, _)),
+        retractall(position2(_, _)),
+        assert(position1(7, 0)),
+        assert(position2(0, 0)),
+        stage2b(S1Board),
+        stage2LoopCPUvCPU(S1Board, Difficulty1, Difficulty2, 0),
         displayBoard(S1Board).
 
 %Prints program usage instructions, no game rules
@@ -345,3 +373,145 @@ stage2CheckMove([First|Tail], X, Y, Found) :-
 
 stage2CheckMove([], _, _, Found) :-
         (Found == 1 -> true; Found is 0).
+
+%Game loop for the 2nd Stage of the game Player vs CPU
+
+stage2LoopPvCPU(Board, Difficulty, State) :-
+        (State == 0 -> stage2PvCPU(Board, Difficulty, Win),
+        (Win == 1 -> NewState is 1;
+         Win == 2 -> NewState is 2;
+         Win == 3 -> NewState is 3;
+         NewState is 0),
+        stage2LoopPvCPU(Board, Difficulty, NewState);
+         State == 1 -> write('Player 1 has reached the goal\n');
+         State == 2 -> write('Player 2 has reached the goal\n');
+         State == 3 -> write('No moves available for both players, game is a draw\n')).
+
+%Game logic for the 2nd Stage of the game Player vs CPU
+
+stage2PvCPU(Board, Difficulty, Win) :-
+        
+        %Available moves for Player 1
+        
+        stage2ComputeMoves(Board, 1, Movelist1),
+        length(Movelist1, N1), %0 = no moves available
+        
+        %Player 1's move
+        
+        (N1 > 0 -> displayBoard(Board),
+        stage2MoveValidation(Movelist1, 1, X1, Y1),
+        retractall(position1(_, _)),
+        assert(position1(X1, Y1)); write('No valid moves for Player 1, skipping turn\n')),
+
+        %Check if Player 1 won
+        
+        checkWin(Board, 1, Win1),
+
+        %Available moves for Player 2
+        
+        (Win1 \= 1 -> stage2ComputeMoves(Board, 2, Movelist2), length(Movelist2, N2),
+                      
+        %Player 2's move
+                      
+        (N2 > 0 -> displayBoard(Board),
+                   
+        stage2CheckMove(Movelist1, 7, 7, Found),
+                   
+        %Plays 1st move available if Difficulty != 2 or AI didn't decide on any move
+        
+        (Found == 0 -> stage2CPUAI(Movelist2, 2, Difficulty, X2, Y2, Decided, _),
+           (Decided \== 1 -> [First|_] = Movelist2, [X2|TempY] = First, [Y2|_] = TempY; true);
+         X2 is 7, Y2 is 7),
+        
+        retractall(position2(_, _)),
+        assert(position2(X2, Y2)); write('No valid moves for Player 2, skipping turn\n')); true),
+        
+        %Check if Player 2 won only if Player 1 hasn't
+        
+        (Win1 \= 1 -> checkWin(Board, 2, Win2); true),
+        
+        %Check if game's a draw
+        
+        checkDraw(N1, N2, Draw),
+        
+        %Win is used in stage2Loop to decide if the game has ended
+        
+        (Draw == 1 -> Win is 3;
+         Win1 == 1 -> Win is 1;
+         Win2 == 1 -> Win is 2;
+         Win is 0).
+
+%Game loop for the 2nd Stage of the game CPU vs CPU
+
+stage2LoopCPUvCPU(Board, Difficulty1, Difficulty2, State) :-
+        (State == 0 -> stage2CPUvCPU(Board, Difficulty1, Difficulty2, Win),
+        (Win == 1 -> NewState is 1;
+         Win == 2 -> NewState is 2;
+         Win == 3 -> NewState is 3;
+         NewState is 0),
+        stage2LoopCPUvCPU(Board, Difficulty1, Difficulty2, NewState);
+         State == 1 -> write('Player 1 has reached the goal\n');
+         State == 2 -> write('Player 2 has reached the goal\n');
+         State == 3 -> write('No moves available for both players, game is a draw\n')).
+
+%Game logic for the 2nd Stage of the game CPU vs CPU
+
+stage2CPUvCPU(Board, Difficulty1, Difficulty2, Win) :-
+        
+        %Available moves for Player 1
+        
+        stage2ComputeMoves(Board, 1, Movelist1),
+        length(Movelist1, N1), %0 = no moves available
+        
+        %Player 1's move
+        
+        (N1 > 0 -> displayBoard(Board), %write('Input to continue\n'), read(_),
+                   
+        stage2CheckMove(Movelist1, 0, 7, Found1),
+                   
+        %Plays 1st move available if Difficulty != 2 or AI didn't decide on any move
+        
+        (Found1 == 0 -> stage2CPUAI(Movelist1, 1, Difficulty1, X1, Y1, Decided1, _),
+           (Decided1 \== 1 -> [First1|_] = Movelist1, [X1|TempY1] = First1, [Y1|_] = TempY1; true);
+         X1 is 0, Y1 is 7),
+       
+        retractall(position1(_, _)),
+        assert(position1(X1, Y1)); write('No valid moves for Player 1, skipping turn\n')),
+
+        %Check if Player 1 won
+        
+        checkWin(Board, 1, Win1),
+
+        %Available moves for Player 2
+        
+        (Win1 \= 1 -> stage2ComputeMoves(Board, 2, Movelist2), length(Movelist2, N2),
+                      
+        %Player 2's move
+                      
+        (N2 > 0 -> displayBoard(Board), %write('Input to continue\n'), read(_),
+        
+        stage2CheckMove(Movelist2, 7, 7, Found2),
+                   
+        %Plays 1st move available if Difficulty != 2 or AI didn't decide on any move
+        
+        (Found2 == 0 -> stage2CPUAI(Movelist2, 2, Difficulty2, X2, Y2, Decided2, _),
+           (Decided2 \== 1 -> [First2|_] = Movelist2, [X2|TempY2] = First2, [Y2|_] = TempY2; true);
+         X1 is 7, Y1 is 7),
+        
+        retractall(position2(_, _)),
+        assert(position2(X2, Y2)); write('No valid moves for Player 2, skipping turn\n')); true),
+        
+        %Check if Player 2 won only if Player 1 hasn't
+        
+        (Win1 \= 1 -> checkWin(Board, 2, Win2); true),
+        
+        %Check if game's a draw
+        
+        checkDraw(N1, N2, Draw),
+        
+        %Win is used in stage2Loop to decide if the game has ended
+        
+        (Draw == 1 -> Win is 3;
+         Win1 == 1 -> Win is 1;
+         Win2 == 1 -> Win is 2;
+         Win is 0).
