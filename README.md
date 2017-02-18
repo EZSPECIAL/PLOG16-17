@@ -1,4 +1,4 @@
-# PLOG16-17
+# PLOG16-17 (Final)
 Repository for introductory class in Logic Programming (PLOG) @ FEUP
 
 Prolog implementation of Trippples
