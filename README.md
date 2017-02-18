@@ -1,4 +1,6 @@
 # PLOG16-17
+Repository for introductory class in Logic Programming (PLOG) @ FEUP
+
 Prolog implementation of Trippples
 
 Game rules can be found here
